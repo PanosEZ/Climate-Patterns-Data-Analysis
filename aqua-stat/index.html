@@ -1,0 +1,1769 @@
+<!DOCTYPE html>
+<html lang="el">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Πίνακας Ελέγχου Aqua-Stat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* Hide scrollbars but keep scrolling working */
+        .custom-scrollbar {
+            -ms-overflow-style: none;
+            /* IE/Edge */
+            scrollbar-width: none;
+            /* Firefox */
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 0px;
+            height: 0px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: transparent;
+        }
+
+        @media (min-width: 1024px) {
+
+            /* Tailwind sticky uses top-24; overwrite to push the sticky anchor down */
+            #sidebar-aside {
+                /* nav height (64px) + extra offset (~100px) */
+                top: 175px !important;
+                border: 1px solid rgb(221, 221, 221);
+                border-radius: 16px;
+            }
+        }
+    </style>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen">
+
+    <nav class="bg-white border-b border-slate-200 sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <div class="bg-indigo-600 p-2 rounded-lg">
+                        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                    </div>
+                    <span class="font-bold text-xl tracking-tight text-slate-900" id="station-name">Aqua-Stat
+                        Dashboard</span>
+                </div>
+                <div class="flex items-center">
+
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="bg-white border-b border-slate-200 shadow-sm sticky top-16 z-10 mt-[-1px]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex space-x-8">
+                <button id="tab-btn-main"
+                    class="border-b-2 border-indigo-500 py-3 px-1 text-sm font-medium text-indigo-600 transition-colors"
+                    onclick="switchTab('main')">
+                    Κεντρικός Πίνακας
+                </button>
+                <button id="tab-btn-kostakioi"
+                    class="border-b-2 border-transparent py-3 px-1 text-sm font-medium text-slate-500 hover:text-slate-700 hover:border-slate-300 transition-colors"
+                    onclick="switchTab('kostakioi')">
+                    Ανάλυση Κωστακιοί
+                </button>
+                <button id="tab-btn-patterns"
+                    class="border-b-2 border-transparent py-3 px-1 text-sm font-medium text-slate-500 hover:text-slate-700 hover:border-slate-300 transition-colors"
+                    onclick="switchTab('patterns')">
+                    Παρατηρούμενα Μοτίβα
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" id="dashboard-container" style="display: none;">
+
+        <!-- MAIN VIEW -->
+        <div id="view-main" class="flex flex-col lg:flex-row gap-8">
+            <!-- Main Content Area -->
+            <div class="flex-1 min-w-0">
+                <div class="mb-8">
+                    <h1 class="text-2xl font-bold text-slate-900">Επισκόπηση Σταθμού</h1>
+                    <p class="text-sm text-slate-500 mt-1">Παρακολούθηση παροχής (FIT 1.9 / 2.9 / 3.9), ενέργειας σταθμού και ωρών αντλιών A1.9, A2.9, A3.9. Ο κύριος όγκος και η ειδική ενέργεια αφορούν το νερό προς δίκτυο (FIT 3.9).</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+                    <div
+                        class="bg-white rounded-2xl shadow-sm p-6 border border-slate-100 hover:shadow-md transition-shadow">
+                        <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Όγκος προς δίκτυο
+                            (FIT 3.9)</div>
+                        <div class="text-3xl font-bold text-slate-900" id="stat-flow">0 <span
+                                class="text-lg text-slate-400 font-medium">m³</span></div>
+                        <div class="text-sm text-slate-500 mt-2 bg-slate-50 inline-block px-2 py-1 rounded-md"
+                            id="stat-flow-sub">Μέση ημερήσια: 0 m³</div>
+                    </div>
+                    <div
+                        class="bg-white rounded-2xl shadow-sm p-6 border border-slate-100 hover:shadow-md transition-shadow">
+                        <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Total Energy
+                            Consumed</div>
+                        <div class="text-3xl font-bold text-slate-900" id="stat-energy">0 <span
+                                class="text-lg text-slate-400 font-medium">kWh</span></div>
+                        <div class="text-sm text-slate-500 mt-2 bg-slate-50 inline-block px-2 py-1 rounded-md"
+                            id="stat-energy-sub">Μέση ημερήσια: 0 kWh</div>
+                    </div>
+                    <div
+                        class="bg-white rounded-2xl shadow-sm p-6 border border-slate-100 hover:shadow-md transition-shadow">
+                        <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Ειδική ενέργεια
+                            (προς δίκτυο)</div>
+                        <div class="text-3xl font-bold text-indigo-600" id="stat-specific-energy">0 <span
+                                class="text-lg text-indigo-400 font-medium">kWh/m³</span></div>
+                        <div
+                            class="text-sm text-emerald-600 mt-2 font-medium bg-emerald-50 inline-block px-2 py-1 rounded-md">
+                            kWh ÷ FIT 3.9</div>
+                        <div class="text-xs text-slate-500 mt-1.5 leading-snug" id="stat-specific-energy-sub"></div>
+                    </div>
+                    <div
+                        class="bg-white rounded-2xl shadow-sm p-6 border border-slate-100 hover:shadow-md transition-shadow">
+                        <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Total Pump
+                            Starts</div>
+                        <div class="text-3xl font-bold text-slate-900" id="stat-starts">0</div>
+                        <div class="text-sm text-slate-500 mt-2 bg-slate-50 inline-block px-2 py-1 rounded-md"
+                            id="stat-hours-sub">Συνολικές ώρες: 0</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-white rounded-2xl shadow-sm p-6 border border-slate-100 lg:col-span-2">
+                        <h3 class="text-lg font-semibold text-slate-800 mb-6">Τάση: όγκος προς δίκτυο (FIT 3.9) &amp; ενέργεια</h3>
+                        <div class="relative h-72">
+                            <canvas id="trendChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-2xl shadow-sm p-6 border border-slate-100">
+                        <h3 class="text-lg font-semibold text-slate-800 mb-6">Κατανομή ροής ανά γραμμή μέτρησης (FIT)</h3>
+                        <div class="relative h-64 flex justify-center">
+                            <canvas id="pieChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm p-6 border border-slate-100 mb-8">
+                    <h3 id="inflow-fit-chart-title" class="text-lg font-semibold text-slate-800 mb-1">Παροχή εισόδων δεξαμενής: FIT 1.9 vs FIT 2.9</h3>
+                    <p id="inflow-fit-chart-subtitle" class="text-sm text-slate-500 mb-6">Σύγκριση όγκου (m³) — Άγιος Γεωργίος (FIT 1.9) έναντι γεώτρησης (FIT 2.9).</p>
+                    <div class="relative h-72">
+                        <canvas id="inflowFitYearlyChart"></canvas>
+                    </div>
+                </div>
+
+                <h2 class="text-xl font-bold text-slate-900 mb-4 mt-10">Ανάλυση ανά γραμμή &amp; αντλίες σταθμού</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8" id="pump-cards">
+                </div>
+
+                <h2 class="text-xl font-bold text-slate-900 mb-4 mt-10">Ειδοποιήσεις Λειτουργίας <span
+                        class="text-sm font-normal text-slate-500 ml-2">(Συνολικά)</span></h2>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                    <div class="bg-rose-50 border border-rose-100 p-4 rounded-xl shadow-sm">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 bg-rose-100 p-2 rounded-lg">
+                                <svg class="h-5 w-5 text-rose-600" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-rose-800 font-bold" id="alert-short-cycle">0 Συμβάντα Σύντομων Κύκλων
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-amber-50 border border-amber-100 p-4 rounded-xl shadow-sm">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 bg-amber-100 p-2 rounded-lg">
+                                <svg class="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-amber-800 font-bold" id="alert-downtime">0 Ημέρες Διακοπής Λειτουργίας</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-orange-50 border border-orange-100 p-4 rounded-xl shadow-sm">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 bg-orange-100 p-2 rounded-lg">
+                                <svg class="h-5 w-5 text-orange-600" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-orange-800 font-bold" id="alert-high-util">0 Ημέρες Υψηλής Χρήσης</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-violet-50 border border-violet-100 p-4 rounded-xl shadow-sm">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 bg-violet-100 p-2 rounded-lg">
+                                <svg class="h-5 w-5 text-violet-600" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-violet-800 font-bold" id="alert-low-eff">0 Ημέρες Χαμηλής Απόδοσης
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <aside id="sidebar-aside"
+                class="w-full lg:w-72 shrink-0 order-first lg:order-last mb-8 lg:mb-0 lg:sticky lg:top-24 lg:self-start">
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                    <h2 class="text-lg font-bold text-slate-900 mb-4"><i
+                            class="fa-solid fa-calendar-days text-indigo-500 mr-2"></i> Χρονική Περίοδος</h2>
+
+                    <!-- Mobile Dropdown -->
+                    <div class="relative group lg:hidden">
+                        <select id="time-selector-mobile"
+                            class="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 py-3 pl-4 pr-10 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-medium transition-all cursor-pointer hover:border-slate-300">
+                            <option value="all_time">Συνολική Επισκόπηση</option>
+                            <optgroup label="Ανά Έτος" id="mobile-year-options"></optgroup>
+                            <optgroup label="Πρόσφατοι Μήνες" id="mobile-month-options"></optgroup>
+                        </select>
+                        <div
+                            class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400 group-hover:text-indigo-500 transition-colors">
+                            <i class="fa-solid fa-chevron-down"></i>
+                        </div>
+                    </div>
+
+                    <!-- Desktop List -->
+                    <div id="time-selector-list" class="hidden lg:block pr-2 custom-scrollbar"
+                        style="max-height: 45vh; overflow-y: auto;">
+                        <!-- Options injected by JS -->
+                    </div>
+
+                    <div id="sidebar-footer" class="mt-6 border-t border-slate-100 pt-6 hidden lg:block">
+                        <h3 class="text-sm font-semibold text-slate-800 mb-3"><i
+                                class="fa-solid fa-circle-info text-slate-400 mr-2"></i> Γρήγορες Συμβουλές</h3>
+                        <p class="text-xs text-slate-500 leading-relaxed">Select a specific year or month to view
+                            detailed pump performance and energy metrics for that period.</p>
+                    </div>
+                </div>
+            </aside>
+        </div>
+        <!-- END MAIN VIEW -->
+
+        <!-- KOSTAKIOI VIEW -->
+        <div id="view-kostakioi" style="display: none;" class="flex flex-col gap-0">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900">Ανάλυση Κωστακιοί</h1>
+                <p class="text-sm text-slate-500 mt-1">Παρακολούθηση εισροής, εκροής νερού και μέτρηση διαφοράς όγκου συστήματος.</p>
+            </div>
+
+            <!-- Summary Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+                <div
+                    class="bg-white rounded-2xl shadow-sm p-6 border border-slate-100 hover:shadow-md transition-shadow">
+                    <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Συνολική Εισροή</div>
+                    <div class="text-3xl font-bold text-slate-900" id="ks-stat-input">0 <span
+                            class="text-lg text-slate-400 font-medium">m³</span></div>
+                </div>
+                <div
+                    class="bg-white rounded-2xl shadow-sm p-6 border border-slate-100 hover:shadow-md transition-shadow">
+                    <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Συνολική Εκροή</div>
+                    <div class="text-3xl font-bold text-slate-900" id="ks-stat-output">0 <span
+                            class="text-lg text-slate-400 font-medium">m³</span></div>
+                </div>
+                <div
+                    class="bg-white rounded-2xl shadow-sm p-6 border border-slate-100 hover:shadow-md transition-shadow">
+                    <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Συνολική Διαφορά</div>
+                    <div class="text-3xl font-bold text-rose-600" id="ks-stat-diff">0 <span
+                            class="text-lg text-rose-400 font-medium">m³</span></div>
+                    <div class="text-sm text-rose-600 mt-2 font-medium bg-rose-50 inline-block px-2 py-1 rounded-md"
+                        id="ks-stat-avg-diff">Μέση ημερήσια: 0 m³</div>
+                </div>
+                <div
+                    class="bg-white rounded-2xl shadow-sm p-6 border border-slate-100 hover:shadow-md transition-shadow">
+                    <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Συνολικό Ποσοστό Διαφοράς</div>
+                    <div class="text-3xl font-bold text-amber-500" id="ks-stat-diffpct">0 <span
+                            class="text-lg text-amber-400 font-medium">%</span></div>
+                </div>
+            </div>
+
+            <!-- Chart -->
+            <div class="bg-white rounded-2xl shadow-sm p-6 border border-slate-100 mb-8">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+                    <h3 class="text-lg font-semibold text-slate-800" id="ks-chart-title">Ημερήσια Ροή & Διαφορά Όγκου Νερού</h3>
+                    <div class="flex bg-slate-50 p-1 rounded-lg border border-slate-200 self-start sm:self-auto">
+                        <button onclick="renderKostakioiChart('daily')" id="btn-ks-daily"
+                            class="px-4 py-1.5 text-xs font-bold rounded-md bg-white text-slate-800 shadow-sm border border-slate-200 transition-all ks-range-btn">Ημερήσια</button>
+                        <button onclick="renderKostakioiChart('monthly')" id="btn-ks-monthly"
+                            class="px-4 py-1.5 text-xs font-bold rounded-md text-slate-500 hover:text-slate-800 transition-all ks-range-btn">Μηνιαία</button>
+                        <button onclick="renderKostakioiChart('yearly')" id="btn-ks-yearly"
+                            class="px-4 py-1.5 text-xs font-bold rounded-md text-slate-500 hover:text-slate-800 transition-all ks-range-btn">Ετήσια</button>
+                    </div>
+                </div>
+                <div class="relative h-96">
+                    <canvas id="kostakioiChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Sources Chart -->
+            <div class="bg-white rounded-2xl shadow-sm p-6 border border-slate-100 mb-8">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+                    <h3 class="text-lg font-semibold text-slate-800" id="ks-sources-chart-title">Σύγκριση Πηγών Εισροής (Υδραγωγείο vs Γεώτρηση)</h3>
+                    <div class="flex bg-slate-50 p-1 rounded-lg border border-slate-200 self-start sm:self-auto">
+                        <button onclick="renderKostakioiSourcesChart('daily')" id="btn-ks-sources-daily"
+                            class="px-4 py-1.5 text-xs font-bold rounded-md bg-white text-slate-800 shadow-sm border border-slate-200 transition-all ks-sources-range-btn">Ημερήσια</button>
+                        <button onclick="renderKostakioiSourcesChart('monthly')" id="btn-ks-sources-monthly"
+                            class="px-4 py-1.5 text-xs font-bold rounded-md text-slate-500 hover:text-slate-800 transition-all ks-sources-range-btn">Μηνιαία</button>
+                        <button onclick="renderKostakioiSourcesChart('yearly')" id="btn-ks-sources-yearly"
+                            class="px-4 py-1.5 text-xs font-bold rounded-md text-slate-500 hover:text-slate-800 transition-all ks-sources-range-btn">Ετήσια</button>
+                    </div>
+                </div>
+                <div class="relative h-96">
+                    <canvas id="kostakioiSourcesChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Anomalies -->
+            <div>
+                <h2 class="text-xl font-bold text-slate-900 mb-4">Ανωμαλίες Υψηλής Διαφοράς Όγκου <span
+                        class="text-sm font-normal text-slate-500 ml-2">(Ημέρες που υπερβαίνουν το φυσιολογικό όριο)</span></h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+                    id="ks-anomalies-container">
+                    <!-- Anomalies fetched via JS -->
+                </div>
+            </div>
+        </div>
+        <!-- END KOSTAKIOI VIEW -->
+
+        <!-- PATTERNS VIEW -->
+        <div id="view-patterns" style="display: none;" class="flex flex-col gap-0">
+            <div class="mb-8">
+                <h1 class="text-2xl font-bold text-slate-900">Παρατηρούμενα Μοτίβα</h1>
+                <p class="text-sm text-slate-500 mt-1">Έξυπνα στατιστικά και τάσεις που προκύπτουν αυτόματα από την ανάλυση των δεδομένων.</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="patterns-container">
+                 <!-- Generated by JS -->
+            </div>
+
+            <!-- Seasonal Chart -->
+            <div class="bg-white rounded-2xl shadow-sm p-6 border border-slate-100 mt-8">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-800" id="seasonal-chart-title">Εποχικό Μοτίβο Κατανάλωσης</h3>
+                        <p class="text-xs text-slate-500 mt-1" id="seasonal-chart-desc">Μέσος όρος εισροής, εκροής και διαφοράς όγκου ανά ημερολογιακό μήνα, υπολογισμένος από όλα τα διαθέσιμα έτη.</p>
+                    </div>
+                </div>
+                <div class="relative h-80">
+                    <canvas id="seasonalPatternChart"></canvas>
+                </div>
+                <!-- Season selectors -->
+                <div class="flex mt-2 ml-10 mr-2 border border-slate-200 rounded-lg overflow-hidden" id="season-selector">
+                    <button onclick="renderSeasonalChart('all')" class="season-btn flex-1 flex items-center justify-center gap-1.5 py-2 border-r border-slate-200 bg-indigo-50 cursor-pointer transition-all hover:bg-slate-50" data-season="all">
+                        <i class="fa-solid fa-border-all text-indigo-600 text-[10px]"></i>
+                        <span class="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Όλες</span>
+                    </button>
+                    <button onclick="renderSeasonalChart('winter')" class="season-btn flex-1 flex items-center justify-center gap-1.5 py-2 border-r border-slate-200 cursor-pointer transition-all hover:bg-slate-50" data-season="winter">
+                        <i class="fa-solid fa-snowflake text-slate-500 text-[10px]"></i>
+                        <span class="text-[10px] font-semibold text-slate-600 uppercase tracking-wider">Χειμώνας</span>
+                    </button>
+                    <button onclick="renderSeasonalChart('spring')" class="season-btn flex-1 flex items-center justify-center gap-1.5 py-2 border-r border-slate-200 cursor-pointer transition-all hover:bg-slate-50" data-season="spring">
+                        <i class="fa-solid fa-seedling text-slate-500 text-[10px]"></i>
+                        <span class="text-[10px] font-semibold text-slate-600 uppercase tracking-wider">Άνοιξη</span>
+                    </button>
+                    <button onclick="renderSeasonalChart('summer')" class="season-btn flex-1 flex items-center justify-center gap-1.5 py-2 border-r border-slate-200 cursor-pointer transition-all hover:bg-slate-50" data-season="summer">
+                        <i class="fa-solid fa-sun text-slate-500 text-[10px]"></i>
+                        <span class="text-[10px] font-semibold text-slate-600 uppercase tracking-wider">Καλοκαίρι</span>
+                    </button>
+                    <button onclick="renderSeasonalChart('autumn')" class="season-btn flex-1 flex items-center justify-center gap-1.5 py-2 cursor-pointer transition-all hover:bg-slate-50" data-season="autumn">
+                        <i class="fa-solid fa-leaf text-slate-500 text-[10px]"></i>
+                        <span class="text-[10px] font-semibold text-slate-600 uppercase tracking-wider">Φθινόπωρο</span>
+                    </button>
+                </div>
+
+                <!-- Chart explanation -->
+                <div class="mt-6 border-t border-slate-100 pt-5">
+                    <div class="flex items-start gap-2.5 mb-3">
+                        <i class="fa-solid fa-circle-info text-indigo-500 mt-0.5 text-sm"></i>
+                        <h4 class="text-sm font-bold text-slate-700">Πώς να διαβάσετε αυτό το γράφημα</h4>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-600 leading-relaxed">
+                        <div>
+                            <p class="font-semibold text-slate-700 mb-1"><i class="fa-solid fa-chart-column text-indigo-400 mr-1"></i> Τι δείχνει</p>
+                            <p id="seasonal-what">Ο μέσος όρος εισροής και εκροής νερού ανά ημερολογιακό μήνα, υπολογισμένος από όλα τα διαθέσιμα έτη. Η κόκκινη γραμμή δείχνει τη μέση μηνιαία διαφορά μεταξύ εισόδου και εξόδου. Κάνοντας κλικ σε μία εποχή, βλέπετε αναλυτικά τη σύγκριση ανά έτος.</p>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-slate-700 mb-1"><i class="fa-solid fa-lightbulb text-amber-400 mr-1"></i> Τι σημαίνουν τα αποτελέσματα</p>
+                            <p id="seasonal-means">Μήνες με υψηλή εκροή (πράσινες μπάρες) υποδεικνύουν περιόδους αυξημένης κατανάλωσης — συνήθως καλοκαίρι λόγω άρδευσης. Αρνητική διαφορά σημαίνει ότι η δεξαμενή αδειάζει ταχύτερα απ' ότι γεμίζει, κάτι που απαιτεί προσοχή.</p>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-slate-700 mb-1"><i class="fa-solid fa-bullseye text-emerald-400 mr-1"></i> Γιατί είναι χρήσιμο</p>
+                            <p id="seasonal-valuable">Αποκαλύπτει τον εποχικό κύκλο ζήτησης, βοηθώντας στον προγραμματισμό συντήρησης, στην πρόβλεψη αναγκών ανεφοδιασμού και στη βελτιστοποίηση της λειτουργίας γεώτρησης κατά τους μήνες αιχμής.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- END PATTERNS VIEW -->
+
+    </main>
+
+    <div id="loading" class="flex justify-center items-center h-64">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        <span class="ml-3 text-lg font-medium text-slate-500">Λήψη δεδομένων πίνακα ελέγχου...</span>
+    </div>
+
+    <div id="error-message"
+        class="hidden max-w-3xl mx-auto mt-10 bg-rose-50 border border-rose-200 text-rose-800 px-6 py-4 rounded-xl shadow-sm relative"
+        role="alert">
+        <strong class="font-bold text-lg block mb-1">Σφάλμα φόρτωσης δεδομένων</strong>
+        <span class="block text-rose-700" id="error-text">Βεβαιωθείτε ότι εκτελείτε έναν τοπικό διακομιστή ιστού (e.g.
+            <code>python -m http.server</code>) για να παρακάμψετε τους περιορισμούς CORS.</span>
+    </div>
+
+    <script>
+        let dashboardData = null;
+        let kostakioiData = null;
+        let trendChartInstance = null;
+        let pieChartInstance = null;
+        let inflowFitYearlyChartInstance = null;
+        let kostChartInstance = null;
+        let kostSourcesChartInstance = null;
+
+        function switchTab(tab) {
+            const btnMain = document.getElementById('tab-btn-main');
+            const btnKost = document.getElementById('tab-btn-kostakioi');
+            const btnPatt = document.getElementById('tab-btn-patterns');
+            
+            const viewMain = document.getElementById('view-main');
+            const viewKost = document.getElementById('view-kostakioi');
+            const viewPatt = document.getElementById('view-patterns');
+
+            const activeBtnCls = 'border-b-2 border-indigo-500 py-3 px-1 text-sm font-medium text-indigo-600 transition-colors';
+            const inactiveBtnCls = 'border-b-2 border-transparent py-3 px-1 text-sm font-medium text-slate-500 hover:text-slate-700 hover:border-slate-300 transition-colors';
+
+            btnMain.className = tab === 'main' ? activeBtnCls : inactiveBtnCls;
+            btnKost.className = tab === 'kostakioi' ? activeBtnCls : inactiveBtnCls;
+            btnPatt.className = tab === 'patterns' ? activeBtnCls : inactiveBtnCls;
+
+            viewMain.style.display = tab === 'main' ? 'flex' : 'none';
+            viewKost.style.display = tab === 'kostakioi' ? 'flex' : 'none';
+            viewPatt.style.display = tab === 'patterns' ? 'flex' : 'none';
+        }
+
+        // Custom Tailwind Colors for Charts
+        const chartColors = {
+            indigo: 'rgba(79, 70, 229, 0.85)',
+            indigoLight: 'rgba(79, 70, 229, 0.1)',
+            emerald: 'rgba(16, 185, 129, 0.85)',
+            violet: 'rgba(139, 92, 246, 0.85)',
+            amber: 'rgba(245, 158, 11, 1)',
+            amberLight: 'rgba(245, 158, 11, 0.1)',
+        };
+
+        // Formatter helpers
+        const fmtNum = (num) => new Intl.NumberFormat('el-GR').format(Math.round(num || 0));
+        const fmtDec = (num, decimals = 2) => new Intl.NumberFormat('el-GR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(num || 0);
+        const fmtDashNum = (num, suffix = '') => (num == null || Number.isNaN(num) ? '—' : fmtNum(num) + suffix);
+        const fmtDashDec = (num, decimals = 2, suffix = '') => (num == null || Number.isNaN(num) ? '—' : fmtDec(num, decimals) + suffix);
+
+        function escapeHtml(text) {
+            if (text == null) return '';
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        const PUMP_LABEL_PREFIXES = ['ΠΑΡΟΧΗ Δ8 ΤΣΕ 9 – Υ/Π', 'ΠΑΡΟΧΗ Δ8 ΤΣΕ 9 - Υ/Π'];
+
+        function shortenPumpDisplayLabel(label) {
+            const s = String(label || '').trim();
+            for (const p of PUMP_LABEL_PREFIXES) {
+                if (s.startsWith(p)) {
+                    const rest = s.slice(p.length).trim();
+                    return rest || s;
+                }
+            }
+            return s;
+        }
+
+        function getPumpLabel(pumpIndex) {
+            const pumps = dashboardData && dashboardData.metadata && dashboardData.metadata.pumps;
+            if (pumps && pumps[pumpIndex - 1] && pumps[pumpIndex - 1].label) {
+                return shortenPumpDisplayLabel(pumps[pumpIndex - 1].label);
+            }
+            return 'Αντλία ' + pumpIndex;
+        }
+
+        /** Short FIT id for pie legend (e.g. FIT 2.9); full names stay on cards & tooltips. */
+        function getPumpPieLabel(pumpIndex) {
+            const lines = dashboardData && dashboardData.metadata && dashboardData.metadata.lines;
+            if (lines && lines[pumpIndex - 1] && lines[pumpIndex - 1].fit) {
+                return lines[pumpIndex - 1].fit;
+            }
+            return getPumpLabel(pumpIndex);
+        }
+
+        function pumpCardHeadingLabel(label, pumpIndex) {
+            let s = String(label || '')
+                .replace(/\s*[\u2014\u2013]\s*/g, ' ')
+                .replace(/\s{2,}/g, ' ')
+                .trim();
+            if (pumpIndex === 1) {
+                s = s.replace(/\s*Άγιος Γεωργίος\s*/g, ' ').replace(/\s{2,}/g, ' ').trim();
+            }
+            if (pumpIndex === 3) {
+                s = s.replace(/\s*Προς Δ\.Δ\.\s*/g, ' ').replace(/\s{2,}/g, ' ').trim();
+            }
+            return s;
+        }
+
+        async function init() {
+            try {
+                const response = await fetch('stats/stats.json?v=' + Date.now());
+                if (!response.ok) throw new Error('Network response was not ok');
+                dashboardData = await response.json();
+
+                try {
+                    const ksResponse = await fetch('stats/kostakioi_data.json?v=' + Date.now());
+                    if (ksResponse.ok) {
+                        kostakioiData = await ksResponse.json();
+                    }
+                } catch (e) {
+                    console.warn("Δεν ήταν δυνατή η φόρτωση kostakioi data", e);
+                }
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('dashboard-container').style.display = 'block';
+
+                setupSelectors();
+
+                if (kostakioiData) {
+                    initKostakioiDashboard();
+                }
+                updateDashboard('all_time');
+
+                // Populate static alerts
+                const alerts = dashboardData.alerts.summary;
+                document.getElementById('alert-short-cycle').textContent = `${alerts.total_short_cycling_events} Συμβάντα Σύντομων Κύκλων`;
+                document.getElementById('alert-downtime').textContent = `${alerts.total_downtime_days} Ημέρες Διακοπής Λειτουργίας`;
+                document.getElementById('alert-high-util').textContent = `${alerts.total_high_utilization_days} Ημέρες Υψηλής Χρήσης`;
+                document.getElementById('alert-low-eff').textContent = `${alerts.total_low_efficiency_days} Ημέρες Χαμηλής Απόδοσης`;
+
+                document.getElementById('station-name').textContent = dashboardData.metadata.station_name;
+
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error-message').style.display = 'block';
+                document.getElementById('error-text').innerHTML = `Δεν ήταν δυνατή η φόρτωση <code>stats/stats.json</code>. <br><br><b>Πώς να το διορθώσετε:</b> Πρέπει να τρέξετε έναν τοπικό διακομιστή ιστού. Ανοίξτε το τερματικό σε αυτόν τον φάκελο και τρέξτε:<br><code class="bg-rose-100 px-2 py-1 rounded mt-2 inline-block text-rose-900 font-mono text-sm">python -m http.server 8000</code><br>Στη συνέχεια ανοίξτε <a href="http://localhost:8000" class="underline font-bold">http://localhost:8000</a> στο πρόγραμμα περιήγησής σας.`;
+            }
+        }
+
+        function setupSelectors() {
+            const listContainer = document.getElementById('time-selector-list');
+            listContainer.innerHTML = '';
+
+            const mobileSelect = document.getElementById('time-selector-mobile');
+            const mobileYearOptGroup = document.getElementById('mobile-year-options');
+            const mobileMonthOptGroup = document.getElementById('mobile-month-options');
+
+            mobileYearOptGroup.innerHTML = '';
+            mobileMonthOptGroup.innerHTML = '';
+
+            const selectTimePeriod = (value) => {
+                // Update mobile select
+                mobileSelect.value = value;
+
+                // Update desktop list
+                document.querySelectorAll('#time-selector-list button[data-value]').forEach(btn => {
+                    btn.classList.remove('bg-indigo-50', 'text-indigo-700', 'time-option-active');
+                    btn.classList.add('text-slate-600', 'hover:bg-slate-50', 'hover:text-slate-900');
+                });
+                const activeBtn = document.querySelector(`#time-selector-list button[data-value="${value}"]`);
+                if (activeBtn) {
+                    activeBtn.classList.remove('text-slate-600', 'hover:bg-slate-50', 'hover:text-slate-900');
+                    activeBtn.classList.add('bg-indigo-50', 'text-indigo-700', 'time-option-active');
+
+                    // If it's a month, ensure its parent year container is expanded
+                    if (value.startsWith('month_')) {
+                        const monthsContainer = activeBtn.closest('.months-container');
+                        if (monthsContainer && monthsContainer.style.display === 'none') {
+                            monthsContainer.style.display = 'block';
+                            const toggleIcon = monthsContainer.previousElementSibling.querySelector('.toggle-icon');
+                            if (toggleIcon) toggleIcon.classList.add('rotate-180');
+                        }
+                    }
+                }
+
+                updateDashboard(value);
+            };
+
+            // Remove old listeners if any to prevent duplicates on re-init
+            const newMobileSelect = mobileSelect.cloneNode(true);
+            mobileSelect.parentNode.replaceChild(newMobileSelect, mobileSelect);
+            newMobileSelect.addEventListener('change', (e) => selectTimePeriod(e.target.value));
+
+            const createListHeader = (text) => {
+                const el = document.createElement('div');
+                el.className = 'text-xs font-bold text-slate-400 uppercase tracking-wider mt-4 mb-2 px-3';
+                el.textContent = text;
+                return el;
+            };
+
+            const createListOption = (value, text, isDefault = false) => {
+                const el = document.createElement('button');
+                const baseClasses = 'w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center mb-1';
+                const activeClasses = 'bg-indigo-50 text-indigo-700 time-option-active';
+                const inactiveClasses = 'text-slate-600 hover:bg-slate-50 hover:text-slate-900';
+
+                el.className = `${baseClasses} ${isDefault ? activeClasses : inactiveClasses}`;
+                el.dataset.value = value;
+                el.innerHTML = text;
+
+                el.onclick = () => selectTimePeriod(value);
+                return el;
+            };
+
+            // All Time
+            listContainer.appendChild(createListOption('all_time', '<i class="fa-solid fa-globe w-5 text-center mr-2 opacity-70"></i> Συνολική Επισκόπηση', true));
+
+            // Group months by year
+            const allMonths = Object.keys(dashboardData.overview.per_month || {}).sort().reverse();
+            const monthsByYear = {};
+            allMonths.forEach(ym => {
+                const year = ym.split('-')[0];
+                if (!monthsByYear[year]) monthsByYear[year] = [];
+                monthsByYear[year].push(ym);
+            });
+
+            // Years and nested months
+            if (dashboardData.metadata.years_covered && dashboardData.metadata.years_covered.length > 0) {
+                listContainer.appendChild(createListHeader('Χρονολόγιο'));
+
+                // Sort years descending
+                const sortedYears = [...dashboardData.metadata.years_covered].sort().reverse();
+
+                sortedYears.forEach(year => {
+                    const yearContainer = document.createElement('div');
+                    yearContainer.className = 'flex flex-col mb-1';
+
+                    const yearWrapper = document.createElement('div');
+                    yearWrapper.className = 'flex items-center w-full';
+
+                    const yearBtn = document.createElement('button');
+                    const baseClasses = 'flex-1 text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center';
+                    yearBtn.className = `${baseClasses} text-slate-600 hover:bg-slate-50 hover:text-slate-900`;
+                    yearBtn.dataset.value = `year_${year}`;
+                    yearBtn.innerHTML = `<i class="fa-regular fa-calendar w-5 text-center mr-2 opacity-70"></i> ${year} Data`;
+                    yearBtn.onclick = () => selectTimePeriod(`year_${year}`);
+
+                    yearWrapper.appendChild(yearBtn);
+
+                    const monthsContainer = document.createElement('div');
+                    monthsContainer.className = 'months-container pl-6 mt-1 space-y-1';
+                    monthsContainer.style.display = 'none';
+
+                    if (monthsByYear[year] && monthsByYear[year].length > 0) {
+                        const toggleBtn = document.createElement('button');
+                        toggleBtn.className = 'p-2 text-slate-400 hover:text-slate-600 transition-colors rounded-lg hover:bg-slate-50 ml-1';
+                        toggleBtn.innerHTML = `<i class="fa-solid fa-chevron-down text-xs transition-transform duration-200 toggle-icon"></i>`;
+
+                        toggleBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            const isHidden = monthsContainer.style.display === 'none';
+                            if (isHidden) {
+                                monthsContainer.style.display = 'block';
+                                toggleBtn.querySelector('.toggle-icon').classList.add('rotate-180');
+                            } else {
+                                monthsContainer.style.display = 'none';
+                                toggleBtn.querySelector('.toggle-icon').classList.remove('rotate-180');
+                            }
+                        };
+
+                        yearWrapper.appendChild(toggleBtn);
+
+                        monthsByYear[year].forEach(ym => {
+                            const dateObj = new Date(ym + '-01T00:00:00Z');
+                            const readableMonth = dateObj.toLocaleDateString('el-GR', { month: 'long', timeZone: 'UTC' });
+
+                            const monthBtn = document.createElement('button');
+                            monthBtn.className = 'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center text-slate-600 hover:bg-slate-50 hover:text-slate-900';
+                            monthBtn.dataset.value = `month_${ym}`;
+                            monthBtn.innerHTML = `<i class="fa-regular fa-calendar-days w-5 text-center mr-2 opacity-70"></i> ${readableMonth}`;
+                            monthBtn.onclick = () => selectTimePeriod(`month_${ym}`);
+
+                            monthsContainer.appendChild(monthBtn);
+
+                            // Mobile select option
+                            const opt = document.createElement('option');
+                            opt.value = `month_${ym}`;
+                            opt.textContent = `${readableMonth} ${year}`;
+                            mobileMonthOptGroup.appendChild(opt);
+                        });
+                    }
+
+                    yearContainer.appendChild(yearWrapper);
+                    yearContainer.appendChild(monthsContainer);
+                    listContainer.appendChild(yearContainer);
+
+                    // Mobile select option for year
+                    const opt = document.createElement('option');
+                    opt.value = `year_${year}`;
+                    opt.textContent = `${year} Data`;
+                    mobileYearOptGroup.appendChild(opt);
+                });
+            }
+        }
+
+        function updateDashboard(selection) {
+            let ovData, pumpData, chartLabels, chartFlowData, chartEnergyData, timeUnit;
+            let inflowLabels, inflowFit19, inflowFit29, inflowXAxisTitle, inflowTitle, inflowSubtitle;
+
+            if (selection === 'all_time') {
+                ovData = dashboardData.overview.all_time;
+                pumpData = dashboardData.per_pump.all_time;
+
+                const yearlyTs = dashboardData.time_series.yearly;
+                chartLabels = yearlyTs.map(d => d.period);
+                chartFlowData = yearlyTs.map(d => d.total_flow_m3);
+                chartEnergyData = yearlyTs.map(d => d.energy_kwh);
+                timeUnit = 'Year';
+
+                inflowLabels = yearlyTs.map(d => d.period);
+                inflowFit19 = yearlyTs.map(d => d.flow_agios_m3 ?? 0);
+                inflowFit29 = yearlyTs.map(d => d.flow_borehole_m3 ?? 0);
+                inflowXAxisTitle = 'Έτος';
+                inflowTitle = 'Παροχή εισόδων δεξαμενής: FIT 1.9 vs FIT 2.9 (ετήσια)';
+                inflowSubtitle = 'Σύγκριση όγκου (m³) ανά ημερολογιακό έτος — Άγιος Γεωργίος (FIT 1.9) έναντι γεώτρησης (FIT 2.9).';
+            }
+            else if (selection.startsWith('year_')) {
+                const year = selection.replace('year_', '');
+                ovData = dashboardData.overview.per_year[year];
+                pumpData = dashboardData.per_pump.per_year[year];
+
+                const monthlyTs = dashboardData.time_series.monthly.filter(d => d.period.startsWith(year));
+                chartLabels = monthlyTs.map(d => {
+                    const dObj = new Date(d.period + '-01T00:00:00Z');
+                    return dObj.toLocaleDateString('el-GR', { month: 'short', timeZone: 'UTC' });
+                });
+                chartFlowData = monthlyTs.map(d => d.total_flow_m3);
+                chartEnergyData = monthlyTs.map(d => d.energy_kwh);
+                timeUnit = 'Month';
+
+                inflowLabels = chartLabels.slice();
+                inflowFit19 = monthlyTs.map(d => d.flow_agios_m3 ?? 0);
+                inflowFit29 = monthlyTs.map(d => d.flow_borehole_m3 ?? 0);
+                inflowXAxisTitle = 'Μήνας';
+                inflowTitle = `Παροχή εισόδων δεξαμενής: FIT 1.9 vs FIT 2.9 (${year})`;
+                inflowSubtitle = 'Μηνιαία σύνθεση (m³) για το επιλεγμένο έτος — ίδια κλίμακα χρόνου με το γράφημα τάσης παραπάνω.';
+            }
+            else if (selection.startsWith('month_')) {
+                const ym = selection.replace('month_', '');
+                ovData = dashboardData.overview.per_month[ym];
+                pumpData = dashboardData.per_pump.per_month[ym];
+
+                const dailyTs = dashboardData.time_series.daily.filter(d => d.date.startsWith(ym));
+                chartLabels = dailyTs.map(d => d.date.split('-')[2]);
+                chartFlowData = dailyTs.map(d => d.total_flow_m3);
+                chartEnergyData = dailyTs.map(d => d.Energy_kWh);
+                timeUnit = 'Day';
+
+                inflowLabels = chartLabels.slice();
+                inflowFit19 = dailyTs.map(d => d.Flow_Agios_m3 ?? 0);
+                inflowFit29 = dailyTs.map(d => d.Flow_Borehole_m3 ?? 0);
+                inflowXAxisTitle = 'Ημέρα (αριθμός)';
+                const monthReadable = new Date(ym + '-01T00:00:00Z').toLocaleDateString('el-GR', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+                inflowTitle = `Παροχή εισόδων δεξαμενής: FIT 1.9 vs FIT 2.9 — ${monthReadable}`;
+                inflowSubtitle = 'Ημερήσια τιμή (m³) ανά ημέρα του μήνα — ίδια κλίμακα με το γράφημα τάσης παραπάνω.';
+            }
+
+            if (!ovData) return;
+
+            // Update Hero Stats
+            document.getElementById('stat-flow').innerHTML = `${fmtNum(ovData.total_flow_m3)} <span class="text-lg text-slate-400 font-medium">m³</span>`;
+            document.getElementById('stat-energy').innerHTML = `${fmtNum(ovData.total_energy_kwh)} <span class="text-lg text-slate-400 font-medium">kWh</span>`;
+            document.getElementById('stat-specific-energy').innerHTML = `${fmtDec(ovData.specific_energy_kwh_per_m3, 4)} <span class="text-lg text-indigo-400 font-medium">kWh/m³</span>`;
+            document.getElementById('stat-starts').textContent = fmtNum(ovData.total_starts);
+
+            const inflows = ovData.total_flow_inflows_to_tank_m3;
+            const inflowsDaily = ovData.total_days ? (inflows / ovData.total_days) : 0;
+            let flowSub = ``;
+            if (inflows != null && ovData.total_days) {
+                flowSub += `Είσοδοι δεξαμενής (FIT 1.9+2.9)`;
+            }
+            document.getElementById('stat-flow-sub').textContent = flowSub;
+
+            const seSub = document.getElementById('stat-specific-energy-sub');
+            const seSite = ovData.specific_energy_kwh_per_m3_pumped_on_site;
+            if (seSub) {
+                seSub.textContent = (seSite != null)
+                    ? `Εναλλακτικά (μόνο νερό αντλιοστασίου FIT 2.9+3.9): ${fmtDec(seSite, 4)} kWh/m³`
+                    : '';
+            }
+            document.getElementById('stat-energy-sub').textContent = `Μέση ημερήσια: ${fmtNum(ovData.avg_daily_energy_kwh)} kWh`;
+            document.getElementById('stat-hours-sub').textContent = `Συνολικές ώρες: ${fmtNum(ovData.total_hours)} h`;
+
+            const inflowTitleEl = document.getElementById('inflow-fit-chart-title');
+            const inflowSubEl = document.getElementById('inflow-fit-chart-subtitle');
+            if (inflowTitleEl) inflowTitleEl.textContent = inflowTitle;
+            if (inflowSubEl) inflowSubEl.textContent = inflowSubtitle;
+
+            // Update Charts
+            updateTrendChart(chartLabels, chartFlowData, chartEnergyData, timeUnit);
+            updatePieChart(pumpData);
+            updateInflowFitChart(inflowLabels, inflowFit19, inflowFit29, inflowXAxisTitle);
+
+            // Update Per-Pump Cards
+            updatePumpCards(pumpData);
+        }
+
+        function updateTrendChart(labels, flowData, energyData, timeUnit) {
+            const ctx = document.getElementById('trendChart').getContext('2d');
+
+            if (trendChartInstance) {
+                trendChartInstance.destroy();
+            }
+
+            // Set global font for Chart.js
+            Chart.defaults.font.family = "'Inter', sans-serif";
+            Chart.defaults.color = '#64748b'; // slate-500
+
+            trendChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Προς δίκτυο FIT 3.9 (m³)',
+                            data: flowData,
+                            backgroundColor: chartColors.indigo,
+                            yAxisID: 'y',
+                            borderRadius: 6,
+                            borderSkipped: false,
+                        },
+                        {
+                            label: 'Ενέργεια (kWh)',
+                            data: energyData,
+                            type: 'line',
+                            borderColor: chartColors.amber,
+                            backgroundColor: chartColors.amberLight,
+                            borderWidth: 3,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#ffffff',
+                            pointBorderColor: chartColors.amber,
+                            pointBorderWidth: 2,
+                            yAxisID: 'y1',
+                            tension: 0.4,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false, drawBorder: false },
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            grid: { color: '#f1f5f9', drawBorder: false }, // slate-100
+                            border: { dash: [4, 4] }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            grid: { display: false },
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: { usePointStyle: true, padding: 20 }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)', // slate-900
+                            titleFont: { size: 13 },
+                            bodyFont: { size: 13 },
+                            padding: 12,
+                            cornerRadius: 8,
+                            displayColors: true
+                        }
+                    }
+                }
+            });
+        }
+
+        /** Παροχή FIT 1.9 vs FIT 2.9 — ίδια ανάλυση χρόνου με την επιλογή sidebar (ετήσια / μηνιαία / ημερήσια). */
+        function updateInflowFitChart(labels, fit19, fit29, xAxisTitle) {
+            if (!labels || !fit19 || !fit29 || labels.length === 0) return;
+
+            const ctx = document.getElementById('inflowFitYearlyChart').getContext('2d');
+            if (inflowFitYearlyChartInstance) {
+                inflowFitYearlyChartInstance.destroy();
+            }
+
+            Chart.defaults.font.family = "'Inter', sans-serif";
+            Chart.defaults.color = '#64748b';
+
+            inflowFitYearlyChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: 'FIT 1.9 — Άγιος Γεωργίος (m³)',
+                            data: fit19,
+                            borderColor: chartColors.indigo,
+                            backgroundColor: chartColors.indigoLight,
+                            borderWidth: 2.5,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#ffffff',
+                            pointBorderColor: chartColors.indigo,
+                            pointBorderWidth: 2,
+                            tension: 0.25,
+                            fill: false,
+                        },
+                        {
+                            label: 'FIT 2.9 — γεώτρηση (m³)',
+                            data: fit29,
+                            borderColor: chartColors.emerald,
+                            backgroundColor: 'rgba(16, 185, 129, 0.08)',
+                            borderWidth: 2.5,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#ffffff',
+                            pointBorderColor: chartColors.emerald,
+                            pointBorderWidth: 2,
+                            tension: 0.25,
+                            fill: false,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        x: {
+                            grid: { display: false, drawBorder: false },
+                            title: { display: true, text: xAxisTitle || '' }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            grid: { color: '#f1f5f9', drawBorder: false },
+                            border: { dash: [4, 4] },
+                            title: { display: true, text: 'm³' }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: { usePointStyle: true, padding: 20 }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            titleFont: { size: 13 },
+                            bodyFont: { size: 13 },
+                            padding: 12,
+                            cornerRadius: 8,
+                            callbacks: {
+                                footer: function (items) {
+                                    if (!items || items.length < 2) return '';
+                                    const v0 = items[0].parsed.y;
+                                    const v1 = items[1].parsed.y;
+                                    const diff = v0 - v1;
+                                    const sign = diff >= 0 ? '+' : '';
+                                    return `Διαφορά (FIT 1.9 − FIT 2.9): ${sign}${fmtNum(diff)} m³`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updatePieChart(pumpData) {
+            const ctx = document.getElementById('pieChart').getContext('2d');
+
+            if (pieChartInstance) {
+                pieChartInstance.destroy();
+            }
+
+            const data = [
+                pumpData.pump_1.total_flow_m3 || 0,
+                pumpData.pump_2.total_flow_m3 || 0,
+                pumpData.pump_3.total_flow_m3 || 0
+            ];
+
+            pieChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: [getPumpPieLabel(1), getPumpPieLabel(2), getPumpPieLabel(3)],
+                    datasets: [{
+                        data: data,
+                        backgroundColor: [
+                            chartColors.indigo,
+                            chartColors.emerald,
+                            chartColors.violet
+                        ],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 12,
+                                font: { size: 11 },
+                                boxWidth: 8
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            padding: 12,
+                            cornerRadius: 8,
+                            callbacks: {
+                                title: function (items) {
+                                    if (!items.length) return '';
+                                    return getPumpLabel(items[0].dataIndex + 1);
+                                },
+                                label: function (context) {
+                                    return fmtNum(context.raw) + ' m³';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updatePumpCards(pumpData) {
+            const container = document.getElementById('pump-cards');
+            container.innerHTML = '';
+
+            const themes = [
+                { text: 'text-indigo-700', bg: 'bg-indigo-50', border: 'border-indigo-500', bar: 'bg-indigo-500' },
+                { text: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-500', bar: 'bg-emerald-500' },
+                { text: 'text-violet-700', bg: 'bg-violet-50', border: 'border-violet-500', bar: 'bg-violet-500' }
+            ];
+
+            for (let i = 1; i <= 3; i++) {
+                const p = pumpData[`pump_${i}`];
+                if (!p) continue;
+
+                const theme = themes[i - 1];
+                const card = document.createElement('div');
+
+                // Using a top border to give each pump a distinct identity
+                card.className = `bg-white rounded-2xl shadow-sm p-6 border border-t-4 ${theme.border} hover:shadow-md transition-shadow`;
+
+                const utilPct = (p.avg_utilization_pct != null && !Number.isNaN(p.avg_utilization_pct)) ? p.avg_utilization_pct : 0;
+                const inletNote = p.has_local_pump === false
+                    ? `<p class="text-xs text-slate-500 mb-4 leading-relaxed">Εξωτερική τροφοδοσία, δεν υπάρχει τοπική αντλία σε αυτή τη γραμμή· η ενέργεια άντλησης μετράται αλλού.</p>`
+                    : '';
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-start gap-2 mb-2">
+                        <h3 class="text-xl font-bold text-slate-900 leading-tight">${escapeHtml(pumpCardHeadingLabel(getPumpLabel(i), i))}</h3>
+                        <span class="px-3 py-1 ${theme.bg} ${theme.text} rounded-full text-xs font-bold tracking-wide shrink-0">${fmtDec(p.flow_share_pct, 1)}% FIT</span>
+                    </div>
+                    ${inletNote}
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center pb-3 border-b border-slate-50">
+                            <span class="text-slate-500 text-sm font-medium">Όγκος (μέτρηση FIT)</span>
+                            <span class="font-bold text-slate-900">${fmtNum(p.total_flow_m3)} <span class="text-xs text-slate-400 font-normal">m³</span></span>
+                        </div>
+                        <div class="flex justify-between items-center pb-3 border-b border-slate-50">
+                            <span class="text-slate-500 text-sm font-medium">Συνολικές ώρες αντλιών</span>
+                            <span class="font-bold text-slate-900">${fmtDashNum(p.total_hours, ' h')}</span>
+                        </div>
+                        <div class="flex justify-between items-center pb-3 border-b border-slate-50">
+                            <span class="text-slate-500 text-sm font-medium">Συνολικές εκκινήσεις</span>
+                            <span class="font-bold text-slate-900">${fmtDashNum(p.total_starts)}</span>
+                        </div>
+                        <div class="flex justify-between items-center pb-3 border-b border-slate-50">
+                            <span class="text-slate-500 text-sm font-medium">Μέσος ρυθμός ροής</span>
+                            <span class="font-bold text-slate-900">${fmtDashNum(p.avg_flow_rate_m3h, ' m³/h')}</span>
+                        </div>
+                        
+                        <div class="pt-2">
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-slate-500 font-medium">Χρήση (ώρες/ημέρα)</span>
+                                <span class="font-bold text-slate-900">${p.avg_utilization_pct != null ? fmtDec(p.avg_utilization_pct, 1) + '%' : '—'}</span>
+                            </div>
+                            <div class="w-full bg-slate-100 rounded-full h-2">
+                                <div class="${theme.bar} h-2 rounded-full" style="width: ${utilPct}%"></div>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-between items-center pt-3">
+                            <span class="text-slate-500 text-sm font-medium">Μέσες εκκινήσεις/ώρα</span>
+                            <span class="font-bold px-2 py-1 rounded ${(p.avg_starts_per_hour != null && p.avg_starts_per_hour > 3) ? 'bg-rose-100 text-rose-700' : 'text-slate-900'}">
+                                ${fmtDashDec(p.avg_starts_per_hour, 2)}
+                            </span>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            }
+        }
+
+        function initKostakioiDashboard() {
+            // Update Summary
+            const sum = kostakioiData.summary;
+            document.getElementById('ks-stat-input').innerHTML = `${fmtDec(sum.total_input, 0)} <span class="text-lg text-slate-400 font-medium">m³</span>`;
+            document.getElementById('ks-stat-output').innerHTML = `${fmtDec(sum.total_output, 0)} <span class="text-lg text-slate-400 font-medium">m³</span>`;
+            document.getElementById('ks-stat-diff').innerHTML = `${fmtDec(sum.total_diff, 0)} <span class="text-lg text-rose-400 font-medium">m³</span>`;
+            document.getElementById('ks-stat-diffpct').innerHTML = `${fmtDec(sum.diff_pct, 1)} <span class="text-lg text-amber-400 font-medium">%</span>`;
+            document.getElementById('ks-stat-avg-diff').textContent = `Μέση ημερήσια: ${fmtDec(sum.avg_daily_diff, 1)} m³`;
+
+            // Render Chart
+            renderKostakioiChart('daily');
+            renderKostakioiSourcesChart('daily');
+            renderPatterns();
+
+            // Render Anomalies
+            const container = document.getElementById('ks-anomalies-container');
+            container.innerHTML = '';
+
+            const anomalies = kostakioiData.anomalies.sort((a, b) => b.loss - a.loss).slice(0, 12); // top 12
+            if (anomalies.length === 0) {
+                container.innerHTML = '<div class="col-span-full text-slate-500 py-4"><i class="fa-solid fa-check-circle text-emerald-500 mr-2"></i>Δεν εντοπίστηκαν ανωμαλίες. Τα επίπεδα διαφοράς όγκου είναι φυσιολογικά.</div>';
+                return;
+            }
+
+            anomalies.forEach(an => {
+                const card = document.createElement('div');
+                card.className = 'bg-rose-50 border border-rose-100 p-4 rounded-xl shadow-sm flex items-center justify-between hover:shadow-md transition-shadow cursor-default';
+
+                card.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="flex-shrink-0 bg-rose-100 h-10 w-10 flex items-center justify-center rounded-lg text-rose-600">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold text-rose-900">${an.date}</p>
+                            <p class="text-xs font-medium text-rose-700">Διαφορά: ${fmtDec(an.diff, 1)} m³</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="inline-block px-2 py-1 bg-rose-200 text-rose-800 text-xs font-bold rounded-md">${fmtDec(an.diff_pct, 1)}%</span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function renderKostakioiChart(range) {
+            // Update button styles
+            document.querySelectorAll('.ks-range-btn').forEach(btn => {
+                btn.classList.remove('bg-white', 'text-slate-800', 'shadow-sm', 'border', 'border-slate-200');
+                btn.classList.add('text-slate-500');
+            });
+            const activeBtn = document.getElementById(`btn-ks-${range}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('text-slate-500');
+                activeBtn.classList.add('bg-white', 'text-slate-800', 'shadow-sm', 'border', 'border-slate-200');
+            }
+
+            let dataSrc;
+            let titlePrefix = '';
+            let labelKey = '';
+
+            if (range === 'daily') {
+                dataSrc = kostakioiData.daily_data;
+                titlePrefix = 'Ημερήσια (Συνολικά)';
+                labelKey = 'date';
+            } else if (range === 'monthly') {
+                dataSrc = kostakioiData.monthly_totals;
+                titlePrefix = 'Μηνιαία (Συνολικά)';
+                labelKey = 'month';
+            } else if (range === 'yearly') {
+                dataSrc = kostakioiData.yearly_totals;
+                titlePrefix = 'Ανά Έτος';
+                labelKey = 'year';
+            }
+
+            document.getElementById('ks-chart-title').textContent = `${titlePrefix} Εισροή & Διαφορά`;
+
+            const ctx = document.getElementById('kostakioiChart').getContext('2d');
+            const labels = dataSrc.map(d => d[labelKey]);
+            const inputData = dataSrc.map(d => d.input_total);
+            const outputData = dataSrc.map(d => d.output);
+            const diffData = dataSrc.map(d => d.diff);
+
+            if (kostChartInstance) {
+                kostChartInstance.destroy();
+            }
+
+            kostChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Συνολική Εισροή (m³)',
+                            data: inputData,
+                            backgroundColor: chartColors.indigoLight,
+                            borderColor: chartColors.indigo,
+                            borderWidth: 2,
+                            pointRadius: range === 'daily' ? 0 : 4,
+                            tension: 0.3,
+                            fill: true
+                        },
+                        {
+                            label: 'Output (m³)',
+                            data: outputData,
+                            backgroundColor: 'transparent',
+                            borderColor: chartColors.emerald,
+                            borderWidth: 2,
+                            pointRadius: range === 'daily' ? 0 : 4,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Διαφορά (m³)',
+                            data: diffData,
+                            backgroundColor: 'rgba(225, 29, 72, 0.1)',
+                            borderColor: '#e11d48',
+                            borderWidth: 2,
+                            pointRadius: range === 'daily' ? 0 : 4,
+                            tension: 0.3,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { maxTicksLimit: range === 'daily' ? 15 : null }
+                        },
+                        y: {
+                            grid: { color: '#f1f5f9', borderDash: [4, 4] }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'top', labels: { usePointStyle: true, padding: 20 } },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            padding: 12,
+                            cornerRadius: 8,
+                            mode: 'index',
+                            intersect: false
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderKostakioiSourcesChart(range) {
+            // Update button styles
+            document.querySelectorAll('.ks-sources-range-btn').forEach(btn => {
+                btn.classList.remove('bg-white', 'text-slate-800', 'shadow-sm', 'border', 'border-slate-200');
+                btn.classList.add('text-slate-500');
+            });
+            const activeBtn = document.getElementById(`btn-ks-sources-${range}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('text-slate-500');
+                activeBtn.classList.add('bg-white', 'text-slate-800', 'shadow-sm', 'border', 'border-slate-200');
+            }
+
+            let dataSrc;
+            let titlePrefix = '';
+            let labelKey = '';
+
+            if (range === 'daily') {
+                dataSrc = kostakioiData.daily_data;
+                titlePrefix = 'Ημερήσια';
+                labelKey = 'date';
+            } else if (range === 'monthly') {
+                dataSrc = kostakioiData.monthly_totals;
+                titlePrefix = 'Μηνιαία';
+                labelKey = 'month';
+            } else if (range === 'yearly') {
+                dataSrc = kostakioiData.yearly_totals;
+                titlePrefix = 'Ανά Έτος';
+                labelKey = 'year';
+            }
+
+            document.getElementById('ks-sources-chart-title').textContent = `${titlePrefix} Σύγκριση Πηγών Εισροής`;
+
+            const ctx = document.getElementById('kostakioiSourcesChart').getContext('2d');
+            const labels = dataSrc.map(d => d[labelKey]);
+            const aqueductData = dataSrc.map(d => d.aqueduct);
+            const drillingData = dataSrc.map(d => d.drilling);
+
+            if (kostSourcesChartInstance) {
+                kostSourcesChartInstance.destroy();
+            }
+
+            kostSourcesChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Από Υδραγωγείο (m³)',
+                            data: aqueductData,
+                            backgroundColor: chartColors.indigo,
+                            borderRadius: 4,
+                            borderSkipped: false
+                        },
+                        {
+                            label: 'Από Γεώτρηση (m³)',
+                            data: drillingData,
+                            backgroundColor: chartColors.emerald,
+                            borderRadius: 4,
+                            borderSkipped: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            grid: { display: false },
+                            ticks: { maxTicksLimit: range === 'daily' ? 15 : null }
+                        },
+                        y: {
+                            stacked: true,
+                            grid: { color: '#f1f5f9', borderDash: [4, 4] }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'top', labels: { usePointStyle: true, padding: 20 } },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            padding: 12,
+                            cornerRadius: 8,
+                            mode: 'index',
+                            intersect: false
+                        }
+                    }
+                }
+            });
+        }
+
+        let patternChartInstances = [];
+
+        function renderPatterns() {
+            if (!kostakioiData || !kostakioiData.patterns) return;
+            const p = kostakioiData.patterns;
+            const container = document.getElementById('patterns-container');
+            container.innerHTML = '';
+
+            // Destroy previous mini-charts
+            patternChartInstances.forEach(c => c.destroy());
+            patternChartInstances = [];
+
+            let canvasIdx = 0;
+            const nextId = () => `pat-sparkline-${canvasIdx++}`;
+
+            // Monthly data
+            const mData = kostakioiData.monthly_totals || [];
+            const mLabels = mData.map(d => d.month);
+            const mOutput = mData.map(d => d.output);
+            const mDiff = mData.map(d => d.diff);
+            const mAqueduct = mData.map(d => d.aqueduct);
+            const mDrilling = mData.map(d => d.drilling);
+
+            // Compute monthly negative-diff-day counts from daily data
+            const dailyData = kostakioiData.daily_data || [];
+            const monthlyNegDays = {};
+            const monthlyPosDays = {};
+            dailyData.forEach(d => {
+                const m = d.date.substring(0, 7);
+                if (!monthlyNegDays[m]) { monthlyNegDays[m] = 0; monthlyPosDays[m] = 0; }
+                if (d.diff < 0) monthlyNegDays[m]++;
+                if (d.diff > 0) monthlyPosDays[m]++;
+            });
+            const mNegDays = mLabels.map(m => monthlyNegDays[m] || 0);
+            const mPosDays = mLabels.map(m => monthlyPosDays[m] || 0);
+
+            // Shared card builder
+            const buildCard = (icon, iconColor, iconBg, title, mainValue, stat, description, canvasId) => `
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 hover:shadow-md transition-all flex flex-col">
+                    <div class="flex items-start gap-4 mb-3">
+                        <div class="${iconBg} ${iconColor} w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 text-lg">
+                            <i class="${icon}"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">${title}</h4>
+                            <div class="text-xl font-black text-slate-800 leading-tight">${mainValue}</div>
+                            <p class="text-xs text-slate-500 font-semibold mt-0.5">${stat}</p>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-500 leading-relaxed mb-3">${description}</p>
+                    <div class="h-16 mt-auto"><canvas id="${canvasId}"></canvas></div>
+                </div>`;
+
+            // Shared sparkline chart options
+            const sparkOpts = {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { enabled: true, backgroundColor: 'rgba(15,23,42,0.9)', cornerRadius: 6, padding: 8, bodyFont: { size: 11 } } },
+                scales: { x: { display: false }, y: { display: false } }
+            };
+
+            // Highlight color builder: peak index gets full opacity, rest faded
+            const highlightColors = (data, color, peakIdx) => data.map((_, i) => i === peakIdx ? color.replace('0.15', '0.9') : color);
+
+            // ===== Card data =====
+            const peakConsIdx = mOutput.indexOf(Math.max(...mOutput));
+            const peakDiffIdx = mDiff.indexOf(Math.max(...mDiff));
+
+            const cards = [
+                {
+                    icon: 'fa-solid fa-droplet', iconColor: 'text-indigo-600', iconBg: 'bg-indigo-50',
+                    title: 'Μήνας Αιχμής Κατανάλωσης',
+                    mainValue: p.highest_consumption_month.month || '-',
+                    stat: `Κατανάλωση: ${fmtNum(p.highest_consumption_month.value)} m³`,
+                    description: 'Ο μήνας με τη μεγαλύτερη συνολική εκροή νερού από τη δεξαμενή. Συνήθως αντιστοιχεί σε περιόδους αυξημένης ζήτησης, όπως θερινούς μήνες ή περιόδους άρδευσης.',
+                    data: mOutput,
+                    color: 'rgba(79, 70, 229, 0.35)',
+                    peakIdx: peakConsIdx
+                },
+                {
+                    icon: 'fa-solid fa-scale-unbalanced', iconColor: 'text-rose-600', iconBg: 'bg-rose-50',
+                    title: 'Μήνας Ανισορροπίας',
+                    mainValue: p.highest_diff_month.month || '-',
+                    stat: `Μέγιστη Διαφορά: ${fmtNum(p.highest_diff_month.value)} m³`,
+                    description: 'Ο μήνας όπου η διαφορά μεταξύ εισροών και εκροών ήταν η μεγαλύτερη. Θετική τιμή σημαίνει ότι μπήκε περισσότερο νερό από ότι καταναλώθηκε, αυξάνοντας τα αποθέματα.',
+                    data: mDiff,
+                    color: 'rgba(225, 29, 72, 0.35)',
+                    peakIdx: peakDiffIdx
+                },
+                {
+                    icon: 'fa-solid fa-faucet', iconColor: 'text-emerald-600', iconBg: 'bg-emerald-50',
+                    title: 'Κύρια Πηγή Εισροής',
+                    mainValue: p.primary_source.name || '-',
+                    stat: `Καλύπτει το ${fmtDec(p.primary_source.percentage, 1)}% της εισροής`,
+                    description: 'Η κύρια πηγή τροφοδοσίας της δεξαμενής βάσει συνολικού όγκου. Το γράφημα δείχνει τη μηνιαία συνεισφορά του Υδραγωγείου (μπλε) σε σχέση με τη Γεώτρηση (πράσινο).',
+                    data: mAqueduct,
+                    data2: mDrilling,
+                    color: 'rgba(79, 70, 229, 0.7)',
+                    color2: 'rgba(16, 185, 129, 0.7)',
+                    stacked: true,
+                    peakIdx: -1
+                },
+                {
+                    icon: 'fa-solid fa-arrow-trend-down', iconColor: 'text-amber-600', iconBg: 'bg-amber-50',
+                    title: 'Άδειασμα Δεξαμενής',
+                    mainValue: `${p.tank_draw.days} Ημέρες`,
+                    stat: `${fmtDec(p.tank_draw.percentage, 1)}% των ημερών`,
+                    description: 'Ο αριθμός ημερών στις οποίες η εκροή ξεπέρασε την εισροή, δηλαδή η δεξαμενή χρησιμοποίησε αποθέματα. Το γράφημα δείχνει πόσες τέτοιες ημέρες είχε κάθε μήνας.',
+                    data: mNegDays,
+                    color: 'rgba(245, 158, 11, 0.35)',
+                    peakIdx: mNegDays.indexOf(Math.max(...mNegDays))
+                },
+                {
+                    icon: 'fa-solid fa-arrow-trend-up', iconColor: 'text-blue-600', iconBg: 'bg-blue-50',
+                    title: 'Γέμισμα Δεξαμενής',
+                    mainValue: `${p.tank_fill.days} Ημέρες`,
+                    stat: `${fmtDec(p.tank_fill.percentage, 1)}% των ημερών`,
+                    description: 'Ο αριθμός ημερών στις οποίες η εισροή ξεπέρασε την εκροή, δηλαδή η στάθμη της δεξαμενής ανέβαινε. Το γράφημα δείχνει πόσες τέτοιες ημέρες είχε κάθε μήνας.',
+                    data: mPosDays,
+                    color: 'rgba(59, 130, 246, 0.35)',
+                    peakIdx: mPosDays.indexOf(Math.max(...mPosDays))
+                }
+            ];
+
+            // Build HTML
+            const canvasIds = [];
+            cards.forEach(c => {
+                const cid = nextId();
+                canvasIds.push(cid);
+                container.innerHTML += buildCard(c.icon, c.iconColor, c.iconBg, c.title, c.mainValue, c.stat, c.description, cid);
+            });
+
+            // Render sparkline charts after DOM update
+            setTimeout(() => {
+                cards.forEach((c, i) => {
+                    const ctx = document.getElementById(canvasIds[i]);
+                    if (!ctx) return;
+
+                    const datasets = [];
+                    let chartType = 'bar';
+                    const opts = JSON.parse(JSON.stringify(sparkOpts));
+
+                    if (c.title === 'Μήνας Ανισορροπίας') {
+                        chartType = 'line';
+                        const peakPointColor = c.color.replace('0.35', '1');
+                        datasets.push({
+                            data: c.data,
+                            backgroundColor: c.color,
+                            borderColor: peakPointColor,
+                            borderWidth: 1.5,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: c.data.map((_, j) => j === c.peakIdx ? 4 : 0),
+                            pointBackgroundColor: peakPointColor,
+                            pointHoverRadius: 6
+                        });
+                    } else if (c.stacked) {
+                        datasets.push({ data: c.data, backgroundColor: c.color, borderRadius: 2, borderSkipped: false });
+                        datasets.push({ data: c.data2, backgroundColor: c.color2, borderRadius: 2, borderSkipped: false });
+                        opts.scales.x = { display: false, stacked: true };
+                        opts.scales.y = { display: false, stacked: true };
+                    } else {
+                        const colors = c.data.map((_, j) => j === c.peakIdx
+                            ? c.color.replace('0.35', '0.9')
+                            : c.color);
+                        datasets.push({ data: c.data, backgroundColor: colors, borderRadius: 2, borderSkipped: false });
+                    }
+
+                    patternChartInstances.push(new Chart(ctx.getContext('2d'), {
+                        type: chartType,
+                        data: { labels: mLabels, datasets },
+                        options: opts
+                    }));
+                });
+            }, 50);
+
+            // Render seasonal chart
+            renderSeasonalChart('all');
+        }
+
+        let seasonalChartInstance = null;
+
+        const seasonConfig = {
+            all: { 
+                months: [1,2,3,4,5,6,7,8,9,10,11,12], 
+                label: 'Εποχικό Μοτίβο Κατανάλωσης', 
+                desc: 'Μέσος όρος εισροής, εκροής και διαφοράς όγκου ανά ημερολογιακό μήνα, υπολογισμένος από όλα τα διαθέσιμα έτη.',
+                what: 'Ο μέσος όρος εισροής και εκροής νερού ανά ημερολογιακό μήνα, υπολογισμένος από όλα τα διαθέσιμα έτη. Η κόκκινη γραμμή δείχνει τη μέση μηνιαία διαφορά μεταξύ εισόδου και εξόδου.',
+                means: 'Αποκαλύπτει τον κύριο εποχικό κύκλο, υποδεικνύοντας πότε η κατανάλωση κορυφώνεται συνήθως και πότε η δεξαμενή δέχεται τη μεγαλύτερη πίεση (π.χ. Ιούλιο-Αύγουστο).',
+                valuable: 'Στρατηγικός σχεδιασμός για την κατανομή των πόρων και το ενεργειακό κόστος με βάση μακροπρόθεσμα δεδομένα πολλών ετών.'
+            },
+            winter: { 
+                months: [12,1,2], 
+                label: 'Χειμερινή Περίοδος (Δεκ–Φεβ)', 
+                desc: 'Σύγκριση εισροής και εκροής ανά έτος για τους χειμερινούς μήνες. Κάθε ομάδα αντιστοιχεί σε μία χρονιά.',
+                what: 'Σύγκριση της εισροής και εκροής νερού ανά χειμώνα για όλα τα έτη. Κάθε ομάδα αντιστοιχεί σε μια συγκεκριμένη χρονιά.',
+                means: 'Περίοδος χαμηλής κατανάλωσης όπου η δεξαμενή συνήθως αναπληρώνει τα αποθέματά της. Μεγάλη απόκλιση εδώ μπορεί να υποδηλώνει ασυνήθιστες διαρροές.',
+                valuable: 'Ιδανική περίοδος για προγραμματισμένη συντήρηση της δεξαμενής και των αντλιών, καθώς η ζήτηση είναι στο ελάχιστο.'
+            },
+            spring: { 
+                months: [3,4,5], 
+                label: 'Ανοιξιάτικη Περίοδος (Μαρ–Μαΐ)', 
+                desc: 'Σύγκριση εισροής και εκροής ανά έτος για τους εαρινούς μήνες.',
+                what: 'Σύγκριση ανά έτος κατά τη διάρκεια της μετάβασης προς την υψηλή ζήτηση.',
+                means: 'Έναρξη της περιόδου άρδευσης. Αυτή η περίοδος δείχνει πόσο γρήγορα αυξάνεται η ζήτηση σε σχέση με τα προηγούμενα έτη.',
+                valuable: 'Πρώιμη προειδοποίηση για την κατάσταση των αντλιών. Αν ο Μάρτιος είναι ήδη υψηλά, προβλέπεται ένα πολύ βαρύ καλοκαίρι.'
+            },
+            summer: { 
+                months: [6,7,8], 
+                label: 'Καλοκαιρινή Περίοδος (Ιουν–Αυγ)', 
+                desc: 'Σύγκριση εισροής και εκροής ανά έτος για τους θερινούς μήνες — η περίοδος αιχμής ζήτησης.',
+                what: 'Οι μήνες μέγιστης ζήτησης συγκρινόμενοι σε διαφορετικά έτη.',
+                means: 'Περίοδος κρίσιμης απόδοσης. Αν οι μπάρες «Εκροής» είναι πολύ υψηλότερες από τις «Εισροής», η δεξαμενή εξαντλείται ταχύτερα από όσο γεμίζει.',
+                valuable: 'Απαραίτητο για αποφάσεις διαχείρισης των υδάτινων πόρων και βέλτιστη ρύθμιση της γεώτρησης για αποφυγή έλλειψης.'
+            },
+            autumn: { 
+                months: [9,10,11], 
+                label: 'Φθινοπωρινή Περίοδος (Σεπ–Νοε)', 
+                desc: 'Σύγκριση εισροής και εκροής ανά έτος για τους φθινοπωρινούς μήνες.',
+                what: 'Σύγκριση ανά έτος για την περίοδο «ψύξης» της ζήτησης.',
+                means: 'Δείχνει πόσο διαρκεί η αρδευτική περίοδος. Ένα ξηρό φθινόπωρο μπορεί να παρατείνει την υψηλή χρήση μέχρι και τον Νοέμβριο.',
+                valuable: 'Βοηθά στον καθορισμό του πότε είναι ασφαλές να μειωθεί η λειτουργία των αντλιών ή να ξεκινήσουν οι εργασίες τέλους έτους.'
+            }
+        };
+
+        function renderSeasonalChart(season = 'all') {
+            if (!kostakioiData || !kostakioiData.monthly_totals) return;
+
+            if (seasonalChartInstance) {
+                seasonalChartInstance.destroy();
+                seasonalChartInstance = null;
+            }
+
+            // Update button styles
+            document.querySelectorAll('.season-btn').forEach(btn => {
+                const isActive = btn.dataset.season === season;
+                const icon = btn.querySelector('i');
+                const span = btn.querySelector('span');
+                btn.classList.toggle('bg-indigo-50', isActive);
+                icon.className = icon.className.replace(/text-(?:indigo-600|slate-500)/g, isActive ? 'text-indigo-600' : 'text-slate-500');
+                span.className = span.className.replace(/text-(?:indigo-600|slate-600)/g, isActive ? 'text-indigo-600' : 'text-slate-600');
+                span.className = span.className.replace(/font-(?:bold|semibold)/g, isActive ? 'font-bold' : 'font-semibold');
+            });
+
+            const cfg = seasonConfig[season];
+            document.getElementById('seasonal-chart-title').textContent = cfg.label;
+            document.getElementById('seasonal-chart-desc').textContent = cfg.desc;
+            
+            // Update explanation text
+            document.getElementById('seasonal-what').textContent = cfg.what;
+            document.getElementById('seasonal-means').textContent = cfg.means;
+            document.getElementById('seasonal-valuable').textContent = cfg.valuable;
+
+            const monthNames = ['', 'Ιαν', 'Φεβ', 'Μαρ', 'Απρ', 'Μαΐ', 'Ιουν', 'Ιουλ', 'Αυγ', 'Σεπ', 'Οκτ', 'Νοε', 'Δεκ'];
+            const ctx = document.getElementById('seasonalPatternChart').getContext('2d');
+
+            if (season === 'all') {
+                // Averaged view across all years
+                const buckets = {};
+                for (let m = 1; m <= 12; m++) buckets[m] = { input: [], output: [], diff: [] };
+
+                kostakioiData.monthly_totals.forEach(d => {
+                    const calMonth = parseInt(d.month.split('-')[1], 10);
+                    if (buckets[calMonth]) {
+                        buckets[calMonth].input.push(d.input_total || 0);
+                        buckets[calMonth].output.push(d.output || 0);
+                        buckets[calMonth].diff.push(d.diff || 0);
+                    }
+                });
+
+                const avg = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+                const avgInput = [], avgOutput = [], avgDiff = [];
+                for (let m = 1; m <= 12; m++) {
+                    avgInput.push(Math.round(avg(buckets[m].input)));
+                    avgOutput.push(Math.round(avg(buckets[m].output)));
+                    avgDiff.push(Math.round(avg(buckets[m].diff)));
+                }
+
+                seasonalChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: monthNames.slice(1),
+                        datasets: [
+                            { label: 'Μ.Ο. Εισροής (m³)', data: avgInput, backgroundColor: 'rgba(79, 70, 229, 0.6)', borderRadius: 6, borderSkipped: false, order: 2, hidden: true },
+                            { label: 'Μ.Ο. Εκροής (m³)', data: avgOutput, backgroundColor: 'rgba(16, 185, 129, 0.6)', borderRadius: 6, borderSkipped: false, order: 2 },
+                            { label: 'Μ.Ο. Διαφοράς (m³)', data: avgDiff, type: 'line', borderColor: 'rgba(225, 29, 72, 0.8)', backgroundColor: 'rgba(225, 29, 72, 0.08)', borderWidth: 2.5, fill: true, tension: 0.4, pointRadius: 4, pointBackgroundColor: 'rgba(225, 29, 72, 0.9)', pointHoverRadius: 6, order: 1 }
+                        ]
+                    },
+                    options: seasonalChartOptions()
+                });
+            } else {
+                // Per-year detailed view for the selected season
+                const seasonMonths = cfg.months;
+                const yearlyData = {};
+
+                kostakioiData.monthly_totals.forEach(d => {
+                    const [yr, mo] = d.month.split('-');
+                    const calMonth = parseInt(mo, 10);
+                    if (seasonMonths.includes(calMonth)) {
+                        if (!yearlyData[yr]) yearlyData[yr] = { input: {}, output: {} };
+                        yearlyData[yr].input[calMonth] = d.input_total || 0;
+                        yearlyData[yr].output[calMonth] = d.output || 0;
+                    }
+                });
+
+                const years = Object.keys(yearlyData).sort();
+                const labels = seasonMonths.map(m => monthNames[m]);
+
+                const yearColors = [
+                    ['rgba(79, 70, 229, 0.7)', 'rgba(79, 70, 229, 0.3)'],
+                    ['rgba(16, 185, 129, 0.7)', 'rgba(16, 185, 129, 0.3)'],
+                    ['rgba(245, 158, 11, 0.7)', 'rgba(245, 158, 11, 0.3)'],
+                    ['rgba(59, 130, 246, 0.7)', 'rgba(59, 130, 246, 0.3)'],
+                    ['rgba(168, 85, 247, 0.7)', 'rgba(168, 85, 247, 0.3)'],
+                    ['rgba(236, 72, 153, 0.7)', 'rgba(236, 72, 153, 0.3)']
+                ];
+
+                const datasets = [];
+                years.forEach((yr, idx) => {
+                    const colors = yearColors[idx % yearColors.length];
+                    datasets.push({
+                        label: `Εισροή ${yr} (m³)`,
+                        data: seasonMonths.map(m => yearlyData[yr].input[m] || 0),
+                        backgroundColor: colors[0],
+                        borderRadius: 4,
+                        borderSkipped: false,
+                        hidden: true
+                    });
+                    datasets.push({
+                        label: `Εκροή ${yr} (m³)`,
+                        data: seasonMonths.map(m => yearlyData[yr].output[m] || 0),
+                        backgroundColor: colors[1],
+                        borderRadius: 4,
+                        borderSkipped: false
+                    });
+                });
+
+                seasonalChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: { labels, datasets },
+                    options: seasonalChartOptions()
+                });
+            }
+        }
+
+        function seasonalChartOptions() {
+            return {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { display: true, position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 16, font: { size: 11, weight: '600' } } },
+                    tooltip: { backgroundColor: 'rgba(15, 23, 42, 0.9)', cornerRadius: 8, padding: 12, bodyFont: { size: 12 }, titleFont: { size: 13, weight: '700' } }
+                },
+                scales: {
+                    x: { grid: { display: false }, ticks: { font: { size: 12, weight: '600' }, color: '#64748b' } },
+                    y: { grid: { color: 'rgba(226, 232, 240, 0.6)' }, ticks: { font: { size: 11 }, color: '#94a3b8', callback: v => v.toLocaleString() + ' m³' }, beginAtZero: true }
+                }
+            };
+        }
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+
+</html>
