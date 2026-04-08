@@ -2,7 +2,6 @@ import os
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-import numpy as np
 
 # ============================================================
 # CONFIGURATION
@@ -15,6 +14,7 @@ STATS_DIR = os.path.join(PROJECT_ROOT, "stats")
 FIT39_CSV = os.path.join(STATS_DIR, "fit39_daily_2020_2025.csv")
 KAMPI_CSV = os.path.join(STATS_DIR, "stat_kampi.csv")
 KOMPOTI_CSV = os.path.join(STATS_DIR, "stat_kompoti.csv")
+KOSTAKIOI_CSV = os.path.join(STATS_DIR, "stat_kostakioi.csv")
 
 # Output Files
 MATRIX_CSV_OUTPUT = os.path.join(STATS_DIR, "matrix_weight_table.csv")
@@ -28,6 +28,7 @@ def generate_matrix():
         df_fit = pd.read_csv(FIT39_CSV, parse_dates=["date"])
         df_kampi = pd.read_csv(KAMPI_CSV, parse_dates=["date"])
         df_kompoti = pd.read_csv(KOMPOTI_CSV, parse_dates=["date"])
+        df_kostakioi = pd.read_csv(KOSTAKIOI_CSV, parse_dates=["date"])
     except FileNotFoundError as e:
         print(f"Error loading files: {e}")
         print("Make sure extract_fit39_daily.py and meteo-stat.py have been run first.")
@@ -46,23 +47,25 @@ def generate_matrix():
         "rainfall": "rain_kompoti"
     })
 
+    df_kostakioi = df_kostakioi.rename(columns={
+        "temperature": "temp_kostakioi",
+        "humidity": "hum_kostakioi",
+        "rainfall": "rain_kostakioi"
+    })
+
     # 3. Merge everything into one Master DataFrame based on the Date
     print("Merging data sets...")
     df_master = pd.merge(df_fit, df_kampi, on="date", how="inner")
     df_master = pd.merge(df_master, df_kompoti, on="date", how="inner")
+    df_master = pd.merge(df_master, df_kostakioi, on="date", how="inner")
     
     # Sort by date chronologically
     df_master.sort_values("date", inplace=True)
 
-    # 4. Add the "Lagged" variables
-    print("Calculating time-lagged variables (yesterday's weather)...")
-    df_master["rain_kampi_yesterday"] = df_master["rain_kampi"].shift(1)
-    df_master["rain_kompoti_yesterday"] = df_master["rain_kompoti"].shift(1)
-    
-    # Drop the first row since "yesterday" will be blank (NaN) for the very first day
-    df_master.dropna(inplace=True)
+    # Note: "Yesterday" lagged variables and dropna() were intentionally removed 
+    # here during feature selection to eliminate noise and simplify the matrix.
 
-    # 5. Generate the Correlation Matrix (The "Matrix Weight Table")
+    # 4. Generate the Correlation Matrix (The "Matrix Weight Table")
     print("Calculating Matrix Weights...")
     corr_matrix = df_master.drop(columns=["date"]).corr(numeric_only=True)
 
@@ -70,17 +73,13 @@ def generate_matrix():
     corr_matrix.to_csv(MATRIX_CSV_OUTPUT)
     print(f"Matrix Weight Table saved to: {MATRIX_CSV_OUTPUT}")
 
-    # 6. Generate the Heatmap Image
+    # 5. Generate the Heatmap Image
     print("Generating Heatmap visualization...")
-    plt.figure(figsize=(12, 10))
+    plt.figure(figsize=(12, 10)) # Adjusted slightly larger to accommodate Kostakioi columns
     
-    # Create a mask so we only show the bottom triangle
-    mask = np.triu(np.ones_like(corr_matrix, dtype=bool))
-    
-    # Paint the heatmap
+    # Paint the full heatmap
     sns.heatmap(
         corr_matrix, 
-        mask=mask,
         annot=True,              
         cmap="coolwarm",         
         fmt=".2f",               

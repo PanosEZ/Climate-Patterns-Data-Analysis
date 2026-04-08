@@ -15,7 +15,7 @@ WEATHER_BASE_DIR = os.path.join(PROJECT_ROOT, "data", "openmeteo", "station")
 OUTPUT_DIR = os.path.join(PROJECT_ROOT, "stats")
 
 # The stations and metrics we want to process
-STATIONS = ["kampi", "kompoti"]
+STATIONS = ["kampi", "kompoti", "kostakioi"]
 METRICS = ["temperature", "humidity", "rainfall"]
 
 def clean_and_export():
